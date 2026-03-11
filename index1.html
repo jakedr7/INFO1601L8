@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anime Gallery</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #11151a;
+      color: white;
+    }
+
+    header {
+      background-color: #3f51b5;
+      text-align: center;
+      padding: 20px;
+    }
+
+    section {
+      width: 90%;
+      margin: 20px auto;
+      text-align: center;
+    }
+
+    input {
+      width: 250px;
+      padding: 10px;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 10px 15px;
+      font-size: 16px;
+      border: none;
+      background-color: #3f51b5;
+      color: white;
+      cursor: pointer;
+      margin-left: 5px;
+    }
+
+    #message {
+      text-align: center;
+      font-size: 18px;
+      margin: 10px 0;
+    }
+
+    #result {
+      width: 90%;
+      margin: 20px auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background-color: #161b22;
+      border: 1px solid #444;
+      border-radius: 10px;
+      overflow: hidden;
+      padding-bottom: 10px;
+    }
+
+    .card img {
+      width: 100%;
+      height: 280px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .card h3 {
+      margin: 10px;
+      font-size: 18px;
+    }
+
+    .card p {
+      margin: 6px 10px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Anime Gallery</h1>
+    <p>Search for your favourite anime</p>
+  </header>
+
+  <section>
+    <input type="text" id="searchInput" placeholder="Search anime title">
+    <button onclick="searchAnime()">Search</button>
+    <button onclick="showAll()">Clear</button>
+  </section>
+
+  <p id="message">Loading...</p>
+
+  <div id="result"></div>
+
+  <script>
+    let state = [];
+
+    function drawGallery(records) {
+      let result = document.getElementById("result");
+      let message = document.getElementById("message");
+      let html = "";
+
+      if (records.length === 0) {
+        result.innerHTML = "";
+        message.innerHTML = "No anime found.";
+        return;
+      }
+
+      for (let anime of records) {
+        html += `
+          <div class="card">
+            <img src="${anime.img_url}" alt="${anime.title}">
+            <h3>${anime.title}</h3>
+            <p>Genre: ${anime.genre}</p>
+            <p>Episodes: ${anime.episodes}</p>
+            <p>Score: ${anime.score}</p>
+          </div>
+        `;
+      }
+
+      result.innerHTML = html;
+      message.innerHTML = "Showing " + records.length + " anime";
+    }
+
+    function getData() {
+      fetch("https://weblabs.web.app/api/anime/all.json")
+        .then(function(response) {
+          return response.json();
+        })
+        .then(function(data) {
+          state = data;
+          drawGallery(state);
+        })
+        .catch(function(error) {
+          document.getElementById("message").innerHTML = "Failed to load data.";
+          console.log(error);
+        });
+    }
+
+    function searchAnime() {
+      let text = document.getElementById("searchInput").value.toUpperCase();
+      let filtered = [];
+
+      for (let anime of state) {
+        if (anime.title.toUpperCase().indexOf(text) !== -1) {
+          filtered.push(anime);
+        }
+      }
+
+      drawGallery(filtered);
+    }
+
+    function showAll() {
+      document.getElementById("searchInput").value = "";
+      drawGallery(state);
+    }
+
+    getData();
+  </script>
+</body>
+</html>
