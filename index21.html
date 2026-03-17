@@ -1,175 +1,211 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CHANGE TITLE</title>
+  <title>Amazon Gallery</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      margin: 0;
       font-family: Arial, sans-serif;
+      margin: 0;
       background-color: #11151a;
       color: white;
     }
 
-    header {
+    nav {
       background-color: #3f51b5;
-      text-align: center;
-      padding: 20px;
-    }
-
-    .controls {
-      width: 90%;
-      margin: 20px auto;
-      text-align: center;
-    }
-
-    .controls input {
-      width: 250px;
       padding: 10px;
-      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
     }
 
-    .controls button {
-      padding: 10px 15px;
-      font-size: 16px;
-      border: none;
-      background-color: #3f51b5;
+    nav h1 {
       color: white;
-      cursor: pointer;
-      margin-left: 5px;
+      margin: 0;
+      flex: 1;
+    }
+
+    nav input,
+    nav select {
+      padding: 8px;
+      font-size: 16px;
     }
 
     #message {
       text-align: center;
+      margin: 15px 0;
       font-size: 18px;
-      margin: 10px 0;
     }
 
-    #result {
-      width: 90%;
-      margin: 20px auto;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px;
+    #gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      padding: 15px;
+      justify-content: center;
     }
 
     .card {
-      background-color: #161b22;
       border: 1px solid #444;
       border-radius: 10px;
+      width: 220px;
+      background-color: #161b22;
       overflow: hidden;
       padding-bottom: 10px;
     }
 
     .card img {
       width: 100%;
-      height: 280px;
-      object-fit: cover;
+      height: 250px;
+      object-fit: contain;
       display: block;
+      background-color: white;
     }
 
+    .card p,
     .card h3 {
-      margin: 10px;
-      font-size: 18px;
+      margin: 8px 10px;
     }
 
-    .card p {
-      margin: 6px 10px;
-      font-size: 14px;
+    .card a {
+      display: inline-block;
+      margin: 8px 10px;
+      color: #8ab4ff;
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>CHANGE HEADING</h1>
-    <p>CHANGE SHORT TEXT</p>
-  </header>
+  <nav>
+    <h1>Amazon Gallery</h1>
 
-  <section class="controls">
-    <input type="text" id="searchInput" placeholder="Search here">
-    <button onclick="searchItems()">Search</button>
-    <button onclick="showAll()">Clear</button>
-  </section>
+    <select id="categorySelect" onchange="changeCategory(this)">
+      <option>Loading categories...</option>
+    </select>
 
-  <p id="message">Loading...</p>
+    <input type="text" id="search" placeholder="Search..." oninput="handleSearch(this)">
+  </nav>
 
-  <div id="result"></div>
+  <p id="message">Loading categories...</p>
+
+  <div id="gallery"></div>
 
   <script>
-    // store all API data
-    let state = [];
+    let categories = [];
+    let allItems = [];
+    let searchQuery = "";
+    let currentCategory = "";
 
-    function getData() {
-      // put API url here
-      fetch("PUT_API_URL_HERE")
+    function loadCategories() {
+      fetch("https://weblabs.web.app/api/amazon/index.json")
         .then(function(response) {
           return response.json();
         })
         .then(function(data) {
-          // change this if data is inside another property
-          // examples: data, data.data, data.message, data.results
-          state = data;
-          drawGallery(state);
+          categories = data;
+          renderCategoryOptions();
+
+          if (categories.length > 0) {
+            document.getElementById("categorySelect").value = categories[0].path;
+            loadProducts(categories[0].path);
+          }
         })
         .catch(function(error) {
-          document.getElementById("message").innerHTML = "Failed to load data.";
+          document.getElementById("message").innerHTML = "Failed to load categories.";
           console.log(error);
         });
     }
 
-    function drawGallery(records) {
-      let result = document.getElementById("result");
-      let message = document.getElementById("message");
+    function renderCategoryOptions() {
       let html = "";
 
-      if (records.length === 0) {
-        result.innerHTML = "";
-        message.innerHTML = "No results found.";
-        return;
+      for (let item of categories) {
+        html += `<option value="${item.path}">${item.name}</option>`;
       }
 
-      for (let item of records) {
+      document.getElementById("categorySelect").innerHTML = html;
+    }
+
+    function changeCategory(selectElement) {
+      searchQuery = "";
+      document.getElementById("search").value = "";
+      loadProducts(selectElement.value);
+    }
+
+    function loadProducts(path) {
+      document.getElementById("message").innerHTML = "Loading products...";
+
+      fetch(path)
+        .then(function(response) {
+          return response.json();
+        })
+        .then(function(data) {
+          if (Array.isArray(data)) {
+            currentCategory = document.getElementById("categorySelect").options[
+              document.getElementById("categorySelect").selectedIndex
+            ].text;
+            allItems = data;
+          } else {
+            currentCategory = data.category;
+            allItems = data.products;
+          }
+
+          refreshGallery();
+        })
+        .catch(function(error) {
+          document.getElementById("message").innerHTML = "Failed to load products.";
+          console.log(error);
+        });
+    }
+
+    function renderGallery(list) {
+      const gallery = document.querySelector("#gallery");
+
+      let html = "";
+      for (let item of list) {
         html += `
           <div class="card">
-            <!-- change image field -->
-            <img src="${item.image}" alt="${item.title}">
-
-            <!-- change title field -->
+            <img src="${item.imgUrl}" alt="${item.title}">
             <h3>${item.title}</h3>
-
-            <!-- change info fields -->
-            <p>${item.info1}</p>
-            <p>${item.info2}</p>
-            <p>${item.info3}</p>
+            <p>Price: $${item.price}</p>
+            <p>Stars: ${item.stars}</p>
+            <a href="${item.productURL}" target="_blank">View Product</a>
           </div>
         `;
       }
 
-      result.innerHTML = html;
-      message.innerHTML = "Showing " + records.length + " items";
+      gallery.innerHTML = html;
     }
 
-    function searchItems() {
-      let text = document.getElementById("searchInput").value.toUpperCase();
-      let filtered = [];
+    function getFilteredList() {
+      let filteredList = [...allItems];
 
-      for (let item of state) {
-        // change title field if needed
-        if (item.title.toUpperCase().indexOf(text) !== -1) {
-          filtered.push(item);
-        }
-      }
+      filteredList = filteredList.filter(function(item) {
+        return item.title.toLowerCase().includes(searchQuery.toLowerCase());
+      });
 
-      drawGallery(filtered);
+      return filteredList;
     }
 
-    function showAll() {
-      document.getElementById("searchInput").value = "";
-      drawGallery(state);
+    function refreshGallery() {
+      const filteredList = getFilteredList();
+      renderGallery(filteredList);
+      document.getElementById("message").innerHTML =
+        currentCategory + " - Showing " + filteredList.length + " products";
     }
 
-    getData();
+    function handleSearch(inputElement) {
+      searchQuery = inputElement.value;
+      refreshGallery();
+    }
+
+    loadCategories();
   </script>
 </body>
 </html>
